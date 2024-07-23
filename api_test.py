@@ -15,8 +15,10 @@ def main():
 
     url = "http://0.0.0.0:8088/get_inference"
 
-    response = requests.post(url, data=json.dumps(params))
+    response = requests.post(url, json=params)
     
+    print("Status Code:", response.status_code)
+    print("Response JSON:", response.json())
 
 if __name__ == "__main__":
     main()

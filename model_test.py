@@ -2,12 +2,13 @@ import numpy as np
 import pandas as pd
 import json
 from datetime import datetime, timedelta
+from typing import Tuple
 
 from model import TemperatureForecast
 
 def get_inference_data(
     temperatures_datsframe: pd.DataFrame, inference_from: datetime = datetime.now(), num_input_points: int = 60
-) -> tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
 
     closest_date = min(temperatures_datsframe["timestamp"], key=lambda x: abs(x - inference_from))
     closest_date_index = temperatures_datsframe[temperatures_datsframe["timestamp"] == closest_date].index.tolist()[0]
@@ -22,7 +23,7 @@ def get_training_set(
     train_for: int = 3600 * 24,
     num_input_points: int = 60,
     num_output_points: int = 15,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
 
     closest_date = min(temperatures_datsframe["timestamp"], key=lambda x: abs(x - train_from))
     start_date = closest_date - timedelta(seconds=train_for)
