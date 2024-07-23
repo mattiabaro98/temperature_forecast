@@ -1,0 +1,14 @@
+{
+    "num_input_points": 60,
+    "num_output_points": 15,
+    "expected_temp_range": [18, 32],
+    "normalization_range": [-1, 1],
+    "model_params": {
+        "LSTM_num": 5,
+        "loss": "mse",
+        "metrics": ["mae"],
+        "optimizer": "adam",
+        "batch": 32,
+        "epochs": 5
+    }
+}
