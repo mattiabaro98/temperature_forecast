@@ -4,7 +4,6 @@ from db_interaction import db_interaction
 from datetime import datetime, timedelta, timezone
 from utils import datetime_to_seconds
 import numpy as np
-import pandas as pd
 
 load_dotenv(override=True)
 
@@ -16,11 +15,23 @@ port = os.getenv("PORT")
 
 db_interactor = db_interaction(dbname=dbname, user=user, password=password, host=host, port=port)
 
-end_time = datetime.now(timezone.utc)
+end_time = datetime.now(timezone.utc) 
 start_time = end_time - timedelta(seconds=10000)
 
 data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
-data_array = np.array(data)
-print(data_array.shape)
-df = pd.DataFrame(data_array, columns=["timestamp", "device", "temperature", "umidity"])
-print(df)
+selected_data = data[-120:]
+temperatures = [t[2] for t in selected_data]
+temperatures = np.array(temperatures).reshape(120,1)
+
+num_input_points = 60
+num_output_points = 15
+
+X = []
+Y = []
+
+for i in range(temperatures.shape[0] - num_input_points - num_output_points):
+    X.append(temperatures[i : i + num_input_points])
+    Y.append(temperatures[i + num_input_points : i + num_input_points + num_output_points])
+
+X = np.array(X).reshape(-1, num_input_points, 1)
+Y = np.array(Y).reshape(-1, num_output_points)
