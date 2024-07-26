@@ -9,89 +9,77 @@ import time
 import threading
 from model import TemperatureForecast
 
-def find_discontinuities(arr):
-    discontinuities = []
-    
-    for i in range(1, len(arr)):
-        current_integer = arr[i]
-        previous_integer = arr[i - 1]
-        
-        if current_integer - previous_integer > 1:
-            gap_start = previous_integer + 1
-            gap_end = current_integer - 1
-            discontinuities.append(gap_end-gap_start)
-    
-    return discontinuities
-
-def check_data_continuity(data):
+def get_continous_data(data):
     interval_th = 10
     timestamps = [t[0] for t in data]
-    discontinuities = find_discontinuities(timestamps)
-    return all(x <= interval_th for x in discontinuities)
+    temperatures = [t[2] for t in data]
+    temperatures = np.array(temperatures).reshape(-1,1)
 
-def check_data_quantity(data):
-    return len(data) > 60
+    continous_data_list = []
+    initial_index = 0
+
+    for i in range(1, len(timestamps)):
+        current_integer = timestamps[i]
+        previous_integer = timestamps[i - 1]
+        
+        if current_integer - previous_integer > interval_th:
+            continous_data_list.append(temperatures[initial_index:i])
+            initial_index = i
+
+    continous_data_list.append(temperatures[initial_index:])
+
+    return continous_data_list
+
+def get_training_data(start_time, end_time):
+    data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
+    continous_data_list = get_continous_data(data)
+    
+    num_input_points = 60
+    num_output_points = 15
+
+    X = []
+    Y = []
+
+    for continous_data in continous_data_list:
+        if continous_data.shape[0] >= 60:
+            for i in range(continous_data.shape[0] - num_input_points - num_output_points):
+                X.append(continous_data[i : i + num_input_points])
+                Y.append(continous_data[i + num_input_points : i + num_input_points + num_output_points])
+
+    X = np.array(X).reshape(-1, num_input_points, 1)
+    Y = np.array(Y).reshape(-1, num_output_points)
+
+    return X,Y
 
 def initial_training():
     global temperature_forecast
     global last_timestamp
+    
     end_time = datetime.now(timezone.utc) 
-    start_time = end_time - timedelta(seconds=200)
+    start_time = end_time - timedelta(seconds=60*120)
     
-    data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
+    X,Y = get_training_data(start_time, end_time)
     
-    if check_data_continuity(data) and check_data_quantity(data):
-    
-        temperatures = [t[2] for t in data]
-        temperatures = np.array(temperatures).reshape(-1,1)
-
-        num_input_points = 60
-        num_output_points = 15
-
-        X = []
-        Y = []
-
-        for i in range(temperatures.shape[0] - num_input_points - num_output_points):
-            X.append(temperatures[i : i + num_input_points])
-            Y.append(temperatures[i + num_input_points : i + num_input_points + num_output_points])
-
-        X = np.array(X).reshape(-1, num_input_points, 1)
-        Y = np.array(Y).reshape(-1, num_output_points)
-
+    if len(X) > 50:
         temperature_forecast.train_model(X,Y)
     
-    last_timestamp = datetime_to_seconds(end_time)
-    
+    last_timestamp = end_time
+
 def update_model():
     global temperature_forecast
     global last_timestamp
-    end_time = datetime.now(timezone.utc) 
-    start_time = end_time - timedelta(seconds=last_timestamp)
-
-    data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
     
-    if check_data_continuity(data) and check_data_quantity(data):
+    end_time = datetime.now(timezone.utc) 
+    start_time = last_timestamp
 
-        temperatures = [t[2] for t in data]
-        temperatures = np.array(temperatures).reshape(-1,1)
-
-        num_input_points = 60
-        num_output_points = 15
-
-        X = []
-        Y = []
-
-        for i in range(temperatures.shape[0] - num_input_points - num_output_points):
-            X.append(temperatures[i : i + num_input_points])
-            Y.append(temperatures[i + num_input_points : i + num_input_points + num_output_points])
-
-        X = np.array(X).reshape(-1, num_input_points, 1)
-        Y = np.array(Y).reshape(-1, num_output_points)
-
+    X,Y = get_training_data(start_time, end_time)
+    
+    if len(X) > 10:
+        print("we are doing training")
         temperature_forecast.train_model(X,Y)
         temperature_forecast.update_inference_model()
     
-    last_timestamp = datetime_to_seconds(end_time)
+    last_timestamp = end_time
 
 def run_periodic_task():
     while True:
@@ -138,8 +126,8 @@ with open('params.json') as file:
     initial_training()
 
 def main():
-    time.sleep(100)
-
+    time.sleep(10)
+    print("doing inference")
     end_time = datetime.now(timezone.utc) 
     start_time = end_time - timedelta(seconds=2000)
 
