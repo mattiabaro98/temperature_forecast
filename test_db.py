@@ -5,6 +5,22 @@ from datetime import datetime, timedelta, timezone
 from utils import datetime_to_seconds
 import numpy as np
 
+def get_data_from_db(N:int) -> np.ndarray:
+    total_data = []
+    sec = N
+
+    while len(total_data) < N:
+        end_time = datetime.now(timezone.utc) 
+        start_time = end_time - timedelta(seconds=sec)
+        data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
+        total_data = total_data + data
+        sec = N - len(total_data)
+    
+    temperatures = [t[2] for t in total_data]
+    temperatures = np.array(temperatures).reshape(N,1)
+
+    return temperatures
+
 load_dotenv(override=True)
 
 dbname = os.getenv("DB_NAME")
