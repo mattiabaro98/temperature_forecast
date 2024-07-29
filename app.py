@@ -1,11 +1,9 @@
 import json
 import numpy as np
-import requests
 
 import time
 import threading
 
-# import google.cloud.logging
 from flask import Flask, jsonify, request
 from model import TemperatureForecast
 
@@ -19,8 +17,8 @@ app = Flask(__name__)
 
 IP = "0.0.0.0"
 
-def get_continous_data(data):
-    interval_th = 10
+def get_continous_data(data:list) -> list:
+    INTERVAL_TH = 10
     timestamps = [t[0] for t in data]
     temperatures = [t[2] for t in data]
     temperatures = np.array(temperatures).reshape(-1,1)
@@ -32,7 +30,7 @@ def get_continous_data(data):
         current_integer = timestamps[i]
         previous_integer = timestamps[i - 1]
         
-        if current_integer - previous_integer > interval_th:
+        if current_integer - previous_integer > INTERVAL_TH:
             continous_data_list.append(temperatures[initial_index:i])
             initial_index = i
 
@@ -40,7 +38,7 @@ def get_continous_data(data):
 
     return continous_data_list
 
-def get_training_data(start_time, end_time):
+def get_training_data(start_time:datetime, end_time:datetime) -> tuple[np.ndarray, np.ndarray]:
     data = db_interactor.read_record_data(datetime_to_seconds(start_time), datetime_to_seconds(end_time))
     continous_data_list = get_continous_data(data)
     
